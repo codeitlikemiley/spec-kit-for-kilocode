@@ -3,14 +3,6 @@
 Break down the plan into executable tasks.
 This is the third step in the Spec-Driven Development lifecycle.
 
-## What This Creates:
-- `tasks.md` - Numbered task list with dependencies
-
-## Prerequisites:
-- Must be on a feature branch (001-feature-name)
-- `plan.md` must exist (created by /plan.md)
-- Optional but helpful: research.md, data-model.md, contracts/, quickstart.md
-
 ## Execution Steps:
 
 1. **Check Prerequisites**
@@ -18,14 +10,23 @@ This is the third step in the Spec-Driven Development lifecycle.
    execute_command: bash .kilocode/scripts/check-task-prerequisites.sh --json
    ```
    Parse FEATURE_DIR and AVAILABLE_DOCS list.
+   If no plan.md exists, ERROR: "No implementation plan found. Run /plan.md first"
 
 2. **Load Design Documents**
-   Use `read_file` for each available document:
-   - **Required**: `$FEATURE_DIR/plan.md` (tech stack, structure)
-   - **If exists**: `$FEATURE_DIR/data-model.md` (entities)
-   - **If exists**: `$FEATURE_DIR/contracts/` files (API endpoints)
-   - **If exists**: `$FEATURE_DIR/research.md` (technical decisions)
-   - **If exists**: `$FEATURE_DIR/quickstart.md` (test scenarios)
+   
+   **Required:**
+   ```
+   read_file: $FEATURE_DIR/plan.md
+   ```
+   Extract: tech stack, project structure, libraries
+   
+   **Conditional (if in AVAILABLE_DOCS):**
+   ```
+   read_file: $FEATURE_DIR/data-model.md
+   list_files: $FEATURE_DIR/contracts/
+   read_file: $FEATURE_DIR/research.md
+   read_file: $FEATURE_DIR/quickstart.md
+   ```
 
 3. **Load Task Template**
    ```
@@ -33,122 +34,127 @@ This is the third step in the Spec-Driven Development lifecycle.
    ```
 
 4. **Generate Task List**
-   Create tasks based on available documents:
    
-   **Setup Tasks (T001-T003)**:
+   Create specific tasks based on what was found:
+   
+   **Setup Tasks (T001-T003):**
    - Project structure creation
-   - Dependency installation
+   - Dependency installation  
    - Linting/formatting setup
    
-   **Test Tasks [P] (T004-T007)**:
-   - One task per contract file found
-   - One task per user story from spec
+   **Test Tasks [P] (T004-T00X):**
+   - One per contract file found
+   - One per user story from spec
    - Mark with [P] for parallel execution
    - Tests MUST fail first (TDD)
    
-   **Core Implementation (T008-T014)**:
-   - One task per entity in data-model
-   - One task per service/module
-   - One task per API endpoint
-   - CLI commands if applicable
+   **Core Tasks (T00X-T0XX):**
+   - One per entity in data-model
+   - One per service/library
+   - One per API endpoint
+   - CLI interfaces for libraries
    
-   **Integration Tasks (T015-T018)**:
+   **Integration Tasks (T0XX-T0XX):**
    - Database connections
    - Middleware setup
    - Logging configuration
-   - Security headers
    
-   **Polish Tasks [P] (T019-T023)**:
+   **Polish Tasks [P] (T0XX-T0XX):**
    - Unit tests
    - Performance testing
    - Documentation updates
-   - Code cleanup
 
-5. **Apply Task Rules**
+5. **Check Task Specificity**
+   
+   For each generated task, verify it includes:
+   - Exact file path to create/modify
+   - Specific function/class names
+   - Clear acceptance criteria
+   
+   If any task is too vague:
+   ```
+   ask_followup_question: "Task T[number] needs more specificity. What should the [specific aspect] include?"
+   ```
+   
+   Example vague task that triggers followup:
+   - "Create user model" → Ask: "What fields should the User model include?"
+   - "Add validation" → Ask: "What validation rules are needed?"
+
+6. **Apply Task Rules**
    - Mark [P] for tasks in different files (can run parallel)
    - No [P] for tasks in same file (must be sequential)
    - Tests MUST come before implementation
-   - Number sequentially (T001, T002, T003...)
+   - Number sequentially (T001, T002, etc.)
    - Include exact file paths
 
-6. **Create Tasks Document**
+7. **Create Tasks Document**
    ```
    write_to_file: $FEATURE_DIR/tasks.md
    ```
+   
    Include:
    - Feature name from plan
    - All numbered tasks with checkboxes
    - Dependency notes
    - Parallel execution examples
-   - File paths for each task
+   - Specific file paths for each task
 
-7. **Update Memory Bank (High-Level Only)**
-   Update feature status in memory bank:
-   ```bash
-   # Check if feature exists in memory bank
-   execute_command: grep -q "$BRANCH" .kilocode/rules/memory-bank/tasks.md || echo "- [ ] $BRANCH - Tasks ready for implementation (see specs/$BRANCH/tasks.md)" >> .kilocode/rules/memory-bank/tasks.md
+8. **Update Context in Memory Bank**
+   ```
+   write_to_file: .kilocode/rules/memory-bank/context.md
+   ```
    
-   # If it exists, update its status
-   execute_command: sed -i "s/.*$BRANCH.*/- [ ] $BRANCH - Tasks ready for implementation (see specs\/$BRANCH\/tasks.md)/" .kilocode/rules/memory-bank/tasks.md
-   ```
-
-8. **Update Memory Bank Status**
-   ```bash
-   execute_command: sed -i "s/| $BRANCH | Planning |/| $BRANCH | Tasks Ready |/" .kilocode/rules/memory-bank/active-features.md
-   ```
+   Update the context with:
+   - Current phase: "Tasks generated"
+   - Task count: Total number of tasks
+   - Next steps: "Begin with T001 in @spec-implementer mode"
+   
+   Note: Do NOT update memory-bank/tasks.md (that's for repetitive workflows only)
 
 9. **Report Success**
-   Output:
-   - Tasks created at: `specs/[001-feature-name]/tasks.md`
-   - Total task count
-   - Parallel tasks identified
-   - Next step: Switch to `@spec-implementer` mode and begin T001
+   
+   Output summary:
+   ```
+   ✅ Tasks created at: specs/[branch]/tasks.md
+   
+   Task Breakdown:
+   - Setup: T001-T003 (3 tasks)
+   - Tests: T004-T007 (4 tasks) [P] - Write these first!
+   - Core: T008-T014 (7 tasks)
+   - Integration: T015-T018 (4 tasks)
+   - Polish: T019-T023 (5 tasks) [P]
+   
+   Total: 23 tasks (9 can run in parallel)
+   
+   Next Steps:
+   1. Review tasks.md for completeness
+   2. Switch to @spec-implementer mode
+   3. Start with T001 (project setup)
+   4. Then T004-T007 (tests - must fail first!)
+   5. Then T008+ (implementation)
+   
+   Remember: Tests before implementation (TDD)
+   ```
 
-## Usage:
-Type `/tasks.md` after completing the plan phase.
+## Tool Usage Summary
 
-## Example:
+This workflow uses Kilocode tools effectively:
+- **execute_command**: Run prerequisite checks
+- **read_file**: Load templates and documents
+- **list_files**: Check contracts directory
+- **write_to_file**: Create tasks.md and update context
+- **ask_followup_question**: Clarify vague requirements
+
+## Error Handling
+
+- Missing plan.md → ERROR and stop
+- Vague tasks → Use ask_followup_question
+- Missing optional docs → Continue with what's available
+- Conflicting info → Plan.md is source of truth
+
+## Usage
 ```
 /tasks.md
 ```
-(No additional arguments needed - reads from existing plan and design docs)
 
-## Output Structure:
-```
-specs/
-└── 001-user-auth/
-    ├── spec.md          # Already exists
-    ├── plan.md          # Already exists
-    ├── research.md      # Already exists
-    ├── data-model.md    # Already exists
-    ├── quickstart.md    # Already exists
-    ├── contracts/       # Already exists
-    │   └── api.yaml
-    └── tasks.md         # Created by this workflow
-```
-
-## Sample Tasks Output:
-```markdown
-# Tasks: User Authentication
-
-## Phase 3.1: Setup
-- [ ] T001: Create project structure per implementation plan
-- [ ] T002: Initialize Python project with FastAPI dependencies
-- [ ] T003 [P]: Configure pytest and ruff
-
-## Phase 3.2: Tests First (TDD)
-- [ ] T004 [P]: Contract test POST /api/auth/register
-- [ ] T005 [P]: Contract test POST /api/auth/login
-- [ ] T006 [P]: Integration test user registration flow
-- [ ] T007 [P]: Integration test login with JWT
-
-## Phase 3.3: Core Implementation
-- [ ] T008 [P]: User model in src/models/user.py
-- [ ] T009 [P]: AuthService in src/services/auth.py
-- [ ] T010: POST /api/auth/register endpoint
-- [ ] T011: POST /api/auth/login endpoint
-
-...
-```
-
-Note: After this workflow, switch to `@spec-implementer` mode to begin implementation.
+No additional arguments needed - reads from existing plan and design docs.

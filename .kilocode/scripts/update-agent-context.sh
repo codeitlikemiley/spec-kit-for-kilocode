@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Incrementally update agent context files based on new feature plan
-# For use with Kilocode spec-kit implementation
+# Update Kilocode memory bank based on new feature plan
+# Works with Kilocode's memory bank system in .kilocode/rules/memory-bank/
 
 set -e
 
@@ -9,237 +9,278 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 FEATURE_DIR="$REPO_ROOT/specs/$CURRENT_BRANCH"
 NEW_PLAN="$FEATURE_DIR/plan.md"
 
-# Determine which agent context files to update
-CLAUDE_FILE="$REPO_ROOT/CLAUDE.md"
-GEMINI_FILE="$REPO_ROOT/GEMINI.md"
-COPILOT_FILE="$REPO_ROOT/.github/copilot-instructions.md"
-# For Kilocode, we might also want:
-KILOCODE_FILE="$REPO_ROOT/KILOCODE.md"
-
-# Allow override via argument
-AGENT_TYPE="$1"
+# Memory bank location
+MEMORY_BANK="$REPO_ROOT/.kilocode/rules/memory-bank"
 
 if [ ! -f "$NEW_PLAN" ]; then
     echo "ERROR: No plan.md found at $NEW_PLAN"
     exit 1
 fi
 
-echo "=== Updating agent context files for feature $CURRENT_BRANCH ==="
+echo "=== Updating Kilocode memory bank for feature $CURRENT_BRANCH ==="
 
-# Extract tech from new plan
+# Create memory bank directory if it doesn't exist
+mkdir -p "$MEMORY_BANK"
+
+# Extract tech info from new plan
 NEW_LANG=$(grep "^**Language/Version**: " "$NEW_PLAN" 2>/dev/null | head -1 | sed 's/^**Language\/Version**: //' | grep -v "NEEDS CLARIFICATION" || echo "")
 NEW_FRAMEWORK=$(grep "^**Primary Dependencies**: " "$NEW_PLAN" 2>/dev/null | head -1 | sed 's/^**Primary Dependencies**: //' | grep -v "NEEDS CLARIFICATION" || echo "")
 NEW_TESTING=$(grep "^**Testing**: " "$NEW_PLAN" 2>/dev/null | head -1 | sed 's/^**Testing**: //' | grep -v "NEEDS CLARIFICATION" || echo "")
 NEW_DB=$(grep "^**Storage**: " "$NEW_PLAN" 2>/dev/null | head -1 | sed 's/^**Storage**: //' | grep -v "N/A" | grep -v "NEEDS CLARIFICATION" || echo "")
 NEW_PROJECT_TYPE=$(grep "^**Project Type**: " "$NEW_PLAN" 2>/dev/null | head -1 | sed 's/^**Project Type**: //' || echo "")
+NEW_PLATFORM=$(grep "^**Target Platform**: " "$NEW_PLAN" 2>/dev/null | head -1 | sed 's/^**Target Platform**: //' || echo "")
 
-# Function to update a single agent context file
-update_agent_file() {
-    local target_file="$1"
-    local agent_name="$2"
+# Update product.md (NOT project.md)
+update_product_file() {
+    local product_file="$MEMORY_BANK/product.md"
     
-    echo "Updating $agent_name context file: $target_file"
-    
-    # Create temp file for new context
-    local temp_file=$(mktemp)
-    
-    # If file doesn't exist, create from template
-    if [ ! -f "$target_file" ]; then
-        echo "Creating new $agent_name context file..."
-        
-        # Check for template in KILOCODE directory (not .specify)
-        if [ -f "$REPO_ROOT/.kilocode/templates/agent-file-template.md" ]; then
-            cp "$REPO_ROOT/.kilocode/templates/agent-file-template.md" "$temp_file"
-        else
-            echo "ERROR: Template not found at $REPO_ROOT/.kilocode/templates/agent-file-template.md"
-            return 1
-        fi
-        
-        # Replace placeholders
-        sed -i.bak "s/\[PROJECT NAME\]/$(basename $REPO_ROOT)/" "$temp_file"
-        sed -i.bak "s/\[DATE\]/$(date +%Y-%m-%d)/" "$temp_file"
-        sed -i.bak "s/\[EXTRACTED FROM ALL PLAN.MD FILES\]/- $NEW_LANG + $NEW_FRAMEWORK ($CURRENT_BRANCH)/" "$temp_file"
-        
-        # Add project structure based on type
-        if [[ "$NEW_PROJECT_TYPE" == *"web"* ]]; then
-            sed -i.bak "s|\[ACTUAL STRUCTURE FROM PLANS\]|backend/\nfrontend/\ntests/|" "$temp_file"
-        else
-            sed -i.bak "s|\[ACTUAL STRUCTURE FROM PLANS\]|src/\ntests/|" "$temp_file"
-        fi
-        
-        # Add minimal commands
-        if [[ "$NEW_LANG" == *"Python"* ]]; then
-            COMMANDS="cd src && pytest && ruff check ."
-        elif [[ "$NEW_LANG" == *"Rust"* ]]; then
-            COMMANDS="cargo test && cargo clippy"
-        elif [[ "$NEW_LANG" == *"JavaScript"* ]] || [[ "$NEW_LANG" == *"TypeScript"* ]]; then
-            COMMANDS="npm test && npm run lint"
-        else
-            COMMANDS="# Add commands for $NEW_LANG"
-        fi
-        sed -i.bak "s|\[ONLY COMMANDS FOR ACTIVE TECHNOLOGIES\]|$COMMANDS|" "$temp_file"
-        
-        # Add code style
-        sed -i.bak "s|\[LANGUAGE-SPECIFIC, ONLY FOR LANGUAGES IN USE\]|$NEW_LANG: Follow standard conventions|" "$temp_file"
-        
-        # Add recent changes
-        sed -i.bak "s|\[LAST 3 FEATURES AND WHAT THEY ADDED\]|- $CURRENT_BRANCH: Added $NEW_LANG + $NEW_FRAMEWORK|" "$temp_file"
-        
-        rm "$temp_file.bak"
-    else
-        echo "Updating existing $agent_name context file..."
-        
-        # [Rest of the update logic remains the same as original]
-        # ... [keeping the Python script portion unchanged]
-        
-        # Extract manual additions
-        local manual_start=$(grep -n "<!-- MANUAL ADDITIONS START -->" "$target_file" | cut -d: -f1)
-        local manual_end=$(grep -n "<!-- MANUAL ADDITIONS END -->" "$target_file" | cut -d: -f1)
-        
-        if [ ! -z "$manual_start" ] && [ ! -z "$manual_end" ]; then
-            sed -n "${manual_start},${manual_end}p" "$target_file" > /tmp/manual_additions.txt
-        fi
-        
-        # Use the same Python update logic as before
-        python3 - << EOF
-import re
-import sys
-from datetime import datetime
+    if [ ! -f "$product_file" ]; then
+        echo "Creating new product.md..."
+        cat > "$product_file" << EOF
+# Product Overview
 
-# Read existing file
-with open("$target_file", 'r') as f:
-    content = f.read()
+## Why This Exists
+Building a software product using spec-driven development methodology.
 
-# [Rest of Python script unchanged from original]
-# Check if new tech already exists
-tech_section = re.search(r'## Active Technologies\n(.*?)\n\n', content, re.DOTALL)
-if tech_section:
-    existing_tech = tech_section.group(1)
-    
-    # Add new tech if not already present
-    new_additions = []
-    if "$NEW_LANG" and "$NEW_LANG" not in existing_tech:
-        new_additions.append(f"- $NEW_LANG + $NEW_FRAMEWORK ($CURRENT_BRANCH)")
-    if "$NEW_DB" and "$NEW_DB" not in existing_tech and "$NEW_DB" != "N/A":
-        new_additions.append(f"- $NEW_DB ($CURRENT_BRANCH)")
-    
-    if new_additions:
-        updated_tech = existing_tech + "\n" + "\n".join(new_additions)
-        content = content.replace(tech_section.group(0), f"## Active Technologies\n{updated_tech}\n\n")
+## Problems Being Solved
+- Ensuring features are fully specified before implementation
+- Maintaining consistency between specification and code
+- Following TDD principles throughout development
 
-# Update project structure if needed
-if "$NEW_PROJECT_TYPE" == "web" and "frontend/" not in content:
-    struct_section = re.search(r'## Project Structure\n\`\`\`\n(.*?)\n\`\`\`', content, re.DOTALL)
-    if struct_section:
-        updated_struct = struct_section.group(1) + "\nfrontend/src/      # Web UI"
-        content = re.sub(r'(## Project Structure\n\`\`\`\n).*?(\n\`\`\`)', 
-                        f'\\1{updated_struct}\\2', content, flags=re.DOTALL)
+## How It Works
+1. Features start with comprehensive specifications
+2. Technical plans guide implementation
+3. Tasks are broken down and executed systematically
+4. All code follows test-driven development
 
-# Add new commands if language is new
-if "$NEW_LANG" and f"# {NEW_LANG}" not in content:
-    commands_section = re.search(r'## Commands\n\`\`\`bash\n(.*?)\n\`\`\`', content, re.DOTALL)
-    if not commands_section:
-        commands_section = re.search(r'## Commands\n(.*?)\n\n', content, re.DOTALL)
-    
-    if commands_section:
-        new_commands = commands_section.group(1)
-        if "Python" in "$NEW_LANG":
-            new_commands += "\ncd src && pytest && ruff check ."
-        elif "Rust" in "$NEW_LANG":
-            new_commands += "\ncargo test && cargo clippy"
-        elif "JavaScript" in "$NEW_LANG" or "TypeScript" in "$NEW_LANG":
-            new_commands += "\nnpm test && npm run lint"
-        
-        if "```bash" in content:
-            content = re.sub(r'(## Commands\n\`\`\`bash\n).*?(\n\`\`\`)', 
-                            f'\\1{new_commands}\\2', content, flags=re.DOTALL)
-        else:
-            content = re.sub(r'(## Commands\n).*?(\n\n)', 
-                            f'\\1{new_commands}\\2', content, flags=re.DOTALL)
+## Current Features
+- $CURRENT_BRANCH: ${CURRENT_BRANCH#*-}
 
-# Update recent changes (keep only last 3)
-changes_section = re.search(r'## Recent Changes\n(.*?)(\n\n|$)', content, re.DOTALL)
-if changes_section:
-    changes = changes_section.group(1).strip().split('\n')
-    changes.insert(0, f"- $CURRENT_BRANCH: Added $NEW_LANG + $NEW_FRAMEWORK")
-    # Keep only last 3
-    changes = changes[:3]
-    content = re.sub(r'(## Recent Changes\n).*?(\n\n|$)', 
-                    f'\\1{chr(10).join(changes)}\\2', content, flags=re.DOTALL)
+## User Experience Goals
+- Clear, documented features
+- Reliable, tested implementation
+- Maintainable codebase
 
-# Update date
-content = re.sub(r'Last updated: \d{4}-\d{2}-\d{2}', 
-                f'Last updated: {datetime.now().strftime("%Y-%m-%d")}', content)
-
-# Write to temp file
-with open("$temp_file", 'w') as f:
-    f.write(content)
+Last updated: $(date +%Y-%m-%d)
 EOF
-
-        # Restore manual additions if they exist
-        if [ -f /tmp/manual_additions.txt ]; then
-            # Remove old manual section from temp file
-            sed -i.bak '/<!-- MANUAL ADDITIONS START -->/,/<!-- MANUAL ADDITIONS END -->/d' "$temp_file"
-            # Append manual additions
-            cat /tmp/manual_additions.txt >> "$temp_file"
-            rm /tmp/manual_additions.txt "$temp_file.bak"
+    else
+        echo "Updating existing product.md..."
+        # Add new feature if not already listed
+        if ! grep -q "$CURRENT_BRANCH" "$product_file"; then
+            sed -i "/## Current Features/a - $CURRENT_BRANCH: ${CURRENT_BRANCH#*-}" "$product_file"
         fi
+        
+        # Update last updated date
+        sed -i "s/Last updated: .*/Last updated: $(date +%Y-%m-%d)/" "$product_file"
     fi
-    
-    # Move temp file to final location
-    mv "$temp_file" "$target_file"
-    echo "✅ $agent_name context file updated successfully"
+    echo "✅ product.md updated"
 }
 
-# Update files based on argument or detect existing files
-case "$AGENT_TYPE" in
-    "claude")
-        update_agent_file "$CLAUDE_FILE" "Claude Code"
-        ;;
-    "gemini") 
-        update_agent_file "$GEMINI_FILE" "Gemini CLI"
-        ;;
-    "copilot")
-        update_agent_file "$COPILOT_FILE" "GitHub Copilot"
-        ;;
-    "kilocode")
-        update_agent_file "$KILOCODE_FILE" "Kilocode"
-        ;;
-    "")
-        # Update all existing files
-        [ -f "$CLAUDE_FILE" ] && update_agent_file "$CLAUDE_FILE" "Claude Code"
-        [ -f "$GEMINI_FILE" ] && update_agent_file "$GEMINI_FILE" "Gemini CLI"
-        [ -f "$COPILOT_FILE" ] && update_agent_file "$COPILOT_FILE" "GitHub Copilot"
-        [ -f "$KILOCODE_FILE" ] && update_agent_file "$KILOCODE_FILE" "Kilocode"
-        
-        # If no files exist, create Kilocode context by default
-        if [ ! -f "$CLAUDE_FILE" ] && [ ! -f "$GEMINI_FILE" ] && [ ! -f "$COPILOT_FILE" ] && [ ! -f "$KILOCODE_FILE" ]; then
-            echo "No agent context files found. Creating Kilocode context file by default."
-            update_agent_file "$KILOCODE_FILE" "Kilocode"
-        fi
-        ;;
-    *)
-        echo "ERROR: Unknown agent type '$AGENT_TYPE'. Use: claude, gemini, copilot, kilocode, or leave empty for all."
-        exit 1
-        ;;
-esac
+# Update context.md
+update_context_file() {
+    local context_file="$MEMORY_BANK/context.md"
+    
+    cat > "$context_file" << EOF
+# Current Context
+
+## Active Work
+- Feature: $CURRENT_BRANCH
+- Phase: Planning complete, ready for task generation
+- Branch: $CURRENT_BRANCH
+
+## Recent Changes
+- Created specification for ${CURRENT_BRANCH#*-}
+- Completed technical planning
+- Technology stack decided: $NEW_LANG with $NEW_FRAMEWORK
+
+## Technical Decisions
+- Language: $NEW_LANG
+- Framework: $NEW_FRAMEWORK
+- Testing: $NEW_TESTING
+- Storage: $([ "$NEW_DB" != "N/A" ] && echo "$NEW_DB" || echo "None required")
+
+## Next Steps
+1. Run /tasks.md to generate task list
+2. Switch to @spec-implementer mode
+3. Begin implementation with T001
+
+## Important Files
+- Specification: specs/$CURRENT_BRANCH/spec.md
+- Technical Plan: specs/$CURRENT_BRANCH/plan.md
+- Research: specs/$CURRENT_BRANCH/research.md
+
+Last updated: $(date +%Y-%m-%d)
+EOF
+    echo "✅ context.md updated"
+}
+
+# Update architecture.md
+update_architecture_file() {
+    local arch_file="$MEMORY_BANK/architecture.md"
+    
+    if [ ! -f "$arch_file" ]; then
+        echo "Creating new architecture.md..."
+        cat > "$arch_file" << EOF
+# System Architecture
+
+## Key Decisions
+- Spec-driven development methodology
+- Test-driven implementation
+- Feature branches for isolation
+
+## Design Patterns
+- Library-first architecture
+- CLI interfaces for all libraries
+- Contract testing for APIs
+
+## Component Structure
+$(if [[ "$NEW_PROJECT_TYPE" == *"web"* ]]; then
+    echo "### Web Application"
+    echo "- backend/ - API server ($NEW_FRAMEWORK)"
+    echo "- frontend/ - Web UI"
+    echo "- tests/ - Test suites ($NEW_TESTING)"
+elif [[ "$NEW_PROJECT_TYPE" == *"mobile"* ]]; then
+    echo "### Mobile Application"
+    echo "- api/ - Backend API ($NEW_FRAMEWORK)"
+    echo "- ios/ or android/ - Mobile app"
+    echo "- tests/ - Test suites ($NEW_TESTING)"
+else
+    echo "### Application"
+    echo "- src/ - Source code ($NEW_LANG)"
+    echo "- tests/ - Test suites ($NEW_TESTING)"
+fi)
+
+## Critical Paths
+- All features must have specifications
+- Tests must be written before implementation
+- Code review required for merges
+
+Last updated: $(date +%Y-%m-%d)
+EOF
+    else
+        echo "ℹ️ architecture.md already exists, preserving existing content"
+    fi
+    echo "✅ architecture.md checked"
+}
+
+# Update tech.md
+update_tech_file() {
+    local tech_file="$MEMORY_BANK/tech.md"
+    
+    cat > "$tech_file" << EOF
+# Technology Stack
+
+## Languages & Frameworks
+- Primary Language: $NEW_LANG
+- Framework: $NEW_FRAMEWORK
+- Testing: $NEW_TESTING
+$([ -n "$NEW_DB" ] && [ "$NEW_DB" != "N/A" ] && echo "- Database: $NEW_DB")
+
+## Development Setup
+- Git with feature branches
+- Spec-driven development workflow
+- Test-driven development
+
+## Dependencies
+See plan.md in specs/$CURRENT_BRANCH/ for detailed dependencies.
+
+## Tool Configurations
+$(if [[ "$NEW_LANG" == *"Python"* ]]; then
+    echo "- pytest for testing"
+    echo "- ruff for linting"
+    echo "- pip for package management"
+elif [[ "$NEW_LANG" == *"JavaScript"* ]] || [[ "$NEW_LANG" == *"TypeScript"* ]]; then
+    echo "- Jest/Vitest for testing"
+    echo "- ESLint for linting"
+    echo "- npm/yarn for package management"
+elif [[ "$NEW_LANG" == *"Rust"* ]]; then
+    echo "- cargo test for testing"
+    echo "- clippy for linting"
+    echo "- cargo for package management"
+fi)
+
+## Constraints
+- Must follow TDD principles
+- All code must pass linting
+- Tests required for all features
+
+Last updated: $(date +%Y-%m-%d)
+EOF
+    echo "✅ tech.md updated"
+}
+
+# Update tasks.md (for repetitive workflows, not individual tasks)
+update_tasks_workflows_file() {
+    local tasks_file="$MEMORY_BANK/tasks.md"
+    
+    if [ ! -f "$tasks_file" ]; then
+        echo "Creating new tasks.md for repetitive workflows..."
+        cat > "$tasks_file" << EOF
+# Repetitive Task Workflows
+
+## Adding a New Feature
+1. Run /specify.md with feature description
+2. Run /plan.md with technical choices
+3. Run /tasks.md to generate task list
+4. Switch to @spec-implementer mode
+5. Work through tasks sequentially
+
+## Creating API Endpoints
+1. Define contract in specs/*/contracts/
+2. Write contract test (must fail)
+3. Implement endpoint
+4. Make test pass
+5. Add integration tests
+
+## Adding New Entity
+1. Define in data-model.md
+2. Create model file
+3. Add validation
+4. Create service layer
+5. Add tests
+
+## Files to Modify for Common Tasks
+- New feature: Create branch, specs directory
+- New endpoint: contracts/, src/api/, tests/contract/
+- New model: data-model.md, src/models/, tests/unit/
+- New service: src/services/, tests/integration/
+
+## Important Considerations
+- Always write tests first (TDD)
+- Update task checkboxes as you complete
+- Commit after each task
+- Run full test suite before marking complete
+
+Last updated: $(date +%Y-%m-%d)
+EOF
+        echo "✅ tasks.md created (for workflows, not feature tasks)"
+    fi
+}
+
+# Execute all updates
+update_product_file
+update_context_file
+update_architecture_file
+update_tech_file
+update_tasks_workflows_file
 
 echo ""
-echo "Summary of changes:"
-if [ ! -z "$NEW_LANG" ]; then
-    echo "- Added language: $NEW_LANG"
-fi
-if [ ! -z "$NEW_FRAMEWORK" ]; then
-    echo "- Added framework: $NEW_FRAMEWORK"
-fi
-if [ ! -z "$NEW_DB" ] && [ "$NEW_DB" != "N/A" ]; then
-    echo "- Added database: $NEW_DB"
+echo "=== Summary of Updates ==="
+echo "Memory bank location: $MEMORY_BANK"
+echo "Updated files:"
+ls -la "$MEMORY_BANK"/*.md 2>/dev/null | awk '{print "  - " $NF}'
+
+if [ -n "$NEW_LANG" ]; then
+    echo ""
+    echo "Technology additions:"
+    echo "  - Language: $NEW_LANG"
+    [ -n "$NEW_FRAMEWORK" ] && echo "  - Framework: $NEW_FRAMEWORK"
+    [ -n "$NEW_TESTING" ] && echo "  - Testing: $NEW_TESTING"
+    [ -n "$NEW_DB" ] && [ "$NEW_DB" != "N/A" ] && echo "  - Database: $NEW_DB"
 fi
 
 echo ""
-echo "Usage: $0 [claude|gemini|copilot|kilocode]"
-echo "  - No argument: Update all existing agent context files"
-echo "  - claude: Update only CLAUDE.md"
-echo "  - gemini: Update only GEMINI.md"
-echo "  - copilot: Update only .github/copilot-instructions.md"
-echo "  - kilocode: Update only KILOCODE.md"
+echo "Next steps:"
+echo "  1. Review memory bank files in $MEMORY_BANK"
+echo "  2. Run /tasks.md to generate task list"
+echo "  3. Begin implementation with @spec-implementer mode"
