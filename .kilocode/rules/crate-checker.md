@@ -1,6 +1,6 @@
 # Rule: Rust Crate Checker
 
-When adding or updaring `Cargo.toml` dependencies, it's important to ensure that the latest version of the crate is used.
+When adding or updating `Cargo.toml` dependencies, it's important to ensure that the latest version of the crate is used.
 
 This rule ensures no hardcoded crate names or versions when checking for the latest version of a dependency. 
 
