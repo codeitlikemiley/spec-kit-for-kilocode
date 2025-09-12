@@ -84,7 +84,7 @@ Markdown templates for consistent documentation:
 
 ```bash
 git clone https://github.com/codeitlikemiley/spec-kit-for-kilocode.git
-cd spec-kit
+cd spec-kit-for-kilocode
 mv README.md spec-kit-README.md
 mv * ../
 ```
