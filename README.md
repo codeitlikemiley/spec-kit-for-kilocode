@@ -1,4 +1,4 @@
-# Spec-Kit v2.0 for Kilocode - Native Integration
+# Spec-Kit for Kilocode - Native Integration
 
 A powerful specification-driven development (SDD) framework that fully leverages Kilocode's native task management, memory bank, and workflow features for structured software development.
 
@@ -10,7 +10,7 @@ Spec-Kit enforces a disciplined approach to software development through four ph
 3. **Tasks** - Break down into executable, trackable tasks
 4. **Implement** - Follow TDD principles with native task tracking
 
-## ✨ What's New in v2.0
+## ✨ Spec Kit for Kilo Code
 
 ### Full Native Kilocode Integration
 - ✅ **Native Task Checkboxes**: `- [ ]` for tracking progress
