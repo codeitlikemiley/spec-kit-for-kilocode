@@ -17,6 +17,11 @@ mv spec-kit-README.md ../
 ```
 
 
+### 1. Initialize Memory Bank (First Time Only)
+```
+initialize memory bank
+```
+
 ## 📁 File Structure
 
 ```
@@ -77,33 +82,26 @@ Markdown templates for consistent documentation:
 
 ## 📚 Core Workflows
 
-### 1. Initialize Memory Bank (First Time Only)
-```
-initialize memory bank
-```
+
 Sets up Kilocode's memory bank structure for your project.
 
-### 2. Create Feature Specification
+### 1. Create Feature Specification
 ```
 /specify Create a user authentication system with email/password login
 ```
 
-### 3. Plan Technical Implementation
+### 2. Plan Technical Implementation
 ```
 /plan Using Python FastAPI with PostgreSQL database and pytest for testing
 ```
 
-### 4. Generate Task Breakdown
+### 3. Generate Task Breakdown
 ```
 /tasks
 ```
 
 
-## 🎭 Custom Modes
-
-Spec-Kit includes 5 specialized Kilocode modes:
-
-### 1. @spec-implementer
+### 4. @spec-implementer
 **Purpose:** Implement features with native task tracking
 ```
 @spec-implementer
