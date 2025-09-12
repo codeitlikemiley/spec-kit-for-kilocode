@@ -83,7 +83,7 @@ Markdown templates for consistent documentation:
 ### Manual Install
 
 ```bash
-git clone https://github.com/codeitlikemiley/spec-kit.git
+git clone https://github.com/codeitlikemiley/spec-kit-for-kilocode.git
 cd spec-kit
 mv README.md spec-kit-README.md
 mv * ../
