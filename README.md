@@ -2,23 +2,20 @@
 
 A powerful specification-driven development (SDD) framework that fully leverages Kilocode's native task management, memory bank, and workflow features for structured software development.
 
-## 🎯 What is Spec-Kit?
 
-Spec-Kit enforces a disciplined approach to software development through four phases:
-1. **Specify** - Clear requirements and user stories before any code
-2. **Plan** - Technical architecture and design decisions documented
-3. **Tasks** - Break down into executable, trackable tasks
-4. **Implement** - Follow TDD principles with native task tracking
+## 🚀 Installation
 
-## ✨ Spec Kit for Kilo Code
+### Manual Install
 
-### Full Native Kilocode Integration
-- ✅ **Native Task Checkboxes**: `- [ ]` for tracking progress
-- ✅ **Memory Bank Commands**: Automatic context updates
-- ✅ **Subtask Creation**: Complex tasks using `new_task` tool
-- ✅ **Pattern Documentation**: Save workflows with `add task`
-- ✅ **Makefile Integration**: Extract build info automatically
-- ✅ **5 Custom Modes**: Specialized modes for each phase
+```bash
+git clone https://github.com/codeitlikemiley/spec-kit-for-kilocode.git
+cd spec-kit-for-kilocode
+.kilocode/ -> ../.kilocode/
+mv .kilocodemodes ../
+mv README.md spec-kit-README.md
+mv spec-kit-README.md ../
+```
+
 
 ## 📁 File Structure
 
@@ -77,17 +74,6 @@ Markdown templates for consistent documentation:
 
 - common.sh - Shared functions (optional, can be removed)
 - create-new-feature.sh - Complex branch logic (optional, can use execute_command)
-
-## 🚀 Installation
-
-### Manual Install
-
-```bash
-git clone https://github.com/codeitlikemiley/spec-kit-for-kilocode.git
-cd spec-kit-for-kilocode
-mv README.md spec-kit-README.md
-mv * ../
-```
 
 ## 📚 Core Workflows
 
