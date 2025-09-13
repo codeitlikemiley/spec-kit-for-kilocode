@@ -1,6 +1,6 @@
 # Rule: Rust Crate Checker
 
-When adding or updating `Cargo.toml` dependencies, it's important to ensure that the latest version of the crate is used.
+When adding or updaring `Cargo.toml` dependencies, it's important to ensure that the latest version of the crate is used.
 
 This rule ensures no hardcoded crate names or versions when checking for the latest version of a dependency. 
 
@@ -22,3 +22,14 @@ curl -s "https://crates.io/api/v1/crates/$CRATE_NAME/versions" \
 ```
 
 IMPORTANT: Use the output of this command to update your dependencies in your project.
+
+
+### **Lock dependencies before release**
+  Always run:
+
+  ```bash
+  cargo update
+  cargo generate-lockfile
+  ```
+
+Commit the `Cargo.lock` file to ensure reproducible builds.
