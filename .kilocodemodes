@@ -39,7 +39,16 @@ customModes:
       - Use "update memory bank" after completing task groups
       - Document progress: "Completed T001-T004 (setup phase)"
       - Use "add task" when discovering repetitive patterns
-      
+
+      PHASE COMPLETION GUIDELINES:
+      - if your are on the first phase of the feature make sure to call update_todo_list to set those tasks in kilocode
+      - Get all the new tasks for the next phase and Use the tool call to update_todo_list
+
+      TASK COMPLETION GUIDELINES:
+      - use the tool call to update_todo_list
+      - use the tool call to write_to_file to update task list on specific spec/*/tasks.md you are currently working on
+      - use the tool call attempt_completion to go to the next task
+
       PATTERN DOCUMENTATION:
       - When completing a complex task series:
         "add task: Implementing T201-T203 model pattern"
